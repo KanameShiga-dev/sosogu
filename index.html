@@ -111,6 +111,13 @@ canvas{display:block;width:100%;height:clamp(320px,52vh,450px);touch-action:none
 .v{display:block;font-family:var(--f-mono);font-size:22px;line-height:1.2;font-variant-numeric:tabular-nums;white-space:nowrap}
 .v small{font-size:12px;color:var(--mist);margin-left:3px}
 .note{margin:4px 0 0;font-size:12.5px;color:var(--mist)}
+.share{display:flex;gap:8px;margin-top:10px}
+.share a,.share button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border-radius:999px;
+  font:700 13px/1 var(--f-body);letter-spacing:.06em;text-decoration:none;cursor:pointer}
+.share a{background:var(--porcelain);color:var(--ink);border:1px solid var(--porcelain)}
+.share button{appearance:none;background:transparent;color:var(--porcelain);border:1px solid var(--line)}
+.share svg{width:14px;height:14px}
+.share a:focus-visible,.share button:focus-visible{outline:2px solid var(--water);outline-offset:3px}
 .badge{display:inline-block;margin-left:10px;padding:1px 8px;border:1px solid var(--good);border-radius:999px;font-family:var(--f-body);font-size:11px;font-weight:500;color:var(--good);letter-spacing:.06em;vertical-align:middle}
 
 .pour{
@@ -570,7 +577,7 @@ body{margin:0}
 
   window.addEventListener('keydown', e => {
     if (e.code !== 'Space' || screen !== 'game') return;
-    if (e.target && e.target.closest && e.target.closest('button') && e.target !== btn) return;
+    if (e.target && e.target.closest && e.target.closest('button, a') && e.target !== btn) return;
     e.preventDefault();
     if (e.repeat) return;
     press('key');
@@ -682,7 +689,15 @@ body{margin:0}
             <div><span class="k">得点</span><span class="v">${r.score}</span></div>
             <div>${c3}</div>
           </div>
+          ${r.newBest ? `<div class="share">
+            <a id="xShare" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-7.2 8.2L23 22h-6.6l-5.1-6.7L5.4 22H2.3l7.7-8.8L2 2h6.8l4.6 6.1L18.9 2zm-1.2 18h1.7L7.4 3.9H5.6L17.7 20z"/></svg>Xに投稿</a>
+            <button type="button" id="copyShare" aria-live="polite">文面をコピー</button>
+          </div>` : ''}
         </div>`;
+      if (r.newBest) {
+        shareText = buildShareText(r);
+        $('#xShare').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
+      }
       return;
     }
     const tips = {
@@ -702,6 +717,30 @@ body{margin:0}
     }
     info.innerHTML = `<ul class="rules">${items.map(([b, t]) => `<li><b>${b}</b><span>${t}</span></li>`).join('')}</ul>`;
   }
+  // ---------- ベスト更新の共有 ----------
+  const SHARE_URL = 'https://kanameshiga-dev.github.io/sosogu/';
+  let shareText = '';
+  function buildShareText(r) {
+    const combo = `${V().name}・${L().name}`;
+    const detail = game === 'edge'
+      ? (r.gap <= 0 ? `縁より上 +${fmt1(-r.gap)}mm` : `縁まで残り ${fmt1(r.gap)}mm`)
+      : `お手本との差 ${signed(r.diff)}mm`;
+    return `【注ぐ／${GAMES[game]}】${combo}でベスト更新！ ${r.score}点\n「${r.label}」${detail}\n\n目ではなく耳で、器を満たす。\n${SHARE_URL}\n\n#注ぐ`;
+  }
+  info.addEventListener('click', async e => {
+    const b = e.target.closest('#copyShare');
+    if (!b) return;
+    let ok = false;
+    try { await navigator.clipboard.writeText(shareText); ok = true; } catch (err) {}
+    if (!ok) {
+      try {
+        const ta = document.createElement('textarea'); ta.value = shareText; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); ok = document.execCommand('copy'); ta.remove();
+      } catch (err) {}
+    }
+    b.textContent = ok ? 'コピーしました' : 'コピーできませんでした';
+  });
+
   function renderStats() {
     const key = comboKey();
     $('#best-k').textContent = `ベスト（${V().name}・${L().name}）`;
