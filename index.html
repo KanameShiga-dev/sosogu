@@ -68,7 +68,7 @@ body{
 
 .settings{display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px 14px;align-items:center}
 .lab{font-size:12px;color:var(--mist);letter-spacing:.08em}
-.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:999px;padding:3px;gap:2px;justify-self:start}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:22px;padding:3px;gap:2px;justify-self:start}
 .seg button{appearance:none;border:0;background:transparent;color:var(--mist);font:500 13px/1 var(--f-body);padding:9px 15px;border-radius:999px;cursor:pointer;letter-spacing:.04em}
 .seg button[aria-pressed="true"]{background:var(--porcelain);color:var(--ink)}
 
@@ -172,11 +172,16 @@ body{margin:0}
         <button type="button" id="v-glass" data-v="glass">コップ</button>
         <button type="button" id="v-bottle" data-v="bottle">水筒</button>
         <button type="button" id="v-mug" data-v="mug">マグ</button>
+        <button type="button" id="v-wine" data-v="wine">ワイングラス</button>
+        <button type="button" id="v-tokkuri" data-v="tokkuri">徳利</button>
       </div>
       <span class="lab">中身</span>
       <div class="seg" id="seg-liquid" role="group" aria-label="中身">
         <button type="button" id="l-water" data-v="water">水</button>
         <button type="button" id="l-hot" data-v="hot">お湯</button>
+        <button type="button" id="l-ice" data-v="ice">氷水</button>
+        <button type="button" id="l-soda" data-v="soda">炭酸水</button>
+        <button type="button" id="l-beer" data-v="beer">ビール</button>
       </div>
     </div>
 
@@ -249,12 +254,37 @@ body{margin:0}
       Q: 64000, qRes: 5, gurgle: 1.1, h3: 0.6,
       start: [0, 0.2], target: [0.35, 0.9], scale: 7,
       note: '深さ85mm・口径84mm。口が広いぶん開口端補正（0.6r）が大きく、深さの割に低く鳴る。共鳴も鈍く、音程がぼやける。'
+    },
+    wine: {
+      name: 'ワイングラス', prof: [[0, 5], [8, 20], [25, 34], [50, 41], [75, 40], [100, 35]], kind: 'tube', stem: 70,
+      Q: 56000, qRes: 14, gurgle: 0.9, h3: 1,
+      start: [0.12, 0.25], target: [0.4, 0.92], scale: 7,
+      note: '深さ100mm・口径70mm。底が細く胴で膨らみ、口がすぼまる。水位の上がる速さが高さで変わるので、音程の上がり方も途中で変わる。'
+    },
+    tokkuri: {
+      name: '徳利', prof: [[0, 22], [6, 28], [15, 32], [28, 35], [42, 36], [55, 35], [66, 32], [76, 27], [84, 20], [90, 14], [95, 10], [97, 9], [122, 9]], kind: 'helm', neckStart: 97,
+      Q: 8000, qRes: 15, gurgle: 1.3, h3: 0.35, hl: [70, 15],
+      start: [0.45, 0.6], target: [0.55, 0.95], scale: 8,
+      note: '高さ122mm・首の内径18mm。胴はヘルムホルツ共鳴。肩で胴の空気が急に減るので音程が駆け上がり、細い首はあっという間に満ちる。'
     }
   };
+  // c: 器の中の空気の音速(mm/s)  color: 液の色  hiss/rumble: 注ぐ音の高域・低域  fine: 泡が細かい
+  // fizz: 炭酸のはじける音  clink: ポットの氷の音  foam: 泡の立ちやすさ  qMul: 共鳴の鋭さ
   const LIQUIDS = {
-    water: { name: '水', c: 343000, note: '' },
-    hot: { name: 'お湯', c: 355000, note: 'お湯：器の中の空気が温まって音速が上がり（約355m/s）、同じ水位でも約0.6半音高く鳴る。泡立ちも細かく、軽い音になる。' }
+    water: { name: '水', c: 343000, color: '#7cc0dc', hiss: 0.03, rumble: 0.6, note: '' },
+    hot: { name: 'お湯', c: 355000, color: '#7cc0dc', hiss: 0.075, rumble: 0.3, fine: true, steam: true,
+      note: 'お湯：器の中の空気が温まって音速が上がり（約355m/s）、同じ水位でも約0.6半音高く鳴る。泡立ちも細かく、軽い音になる。' },
+    ice: { name: '氷水', c: 333000, color: '#9fd3ea', hiss: 0.03, rumble: 0.55, clink: true,
+      tip: '冷えた空気は音が遅く、いつもより約0.5半音低く鳴ります。ポットの氷の音に惑わされないで。',
+      note: '氷水：器の中の空気が冷えて音速が下がり（約333m/s）、同じ水位でも約0.5半音低く鳴る。' },
+    soda: { name: '炭酸水', c: 343000, color: '#a9dcef', hiss: 0.05, rumble: 0.45, fine: true, fizz: 1,
+      tip: 'シュワシュワとはじける音の奥にある音程を聴き分けてください。',
+      note: '炭酸水：はじける泡の雑音が共鳴の音程に重なる。音程そのものは水と同じ。' },
+    beer: { name: 'ビール', c: 343000, color: '#e0a83c', foamColor: '#f3ead7', hiss: 0.035, rumble: 0.5, fizz: 0.35, foam: 0.3, qMul: 0.6,
+      tip: '泡の上面までが水位です。泡は注ぐほど立ち、止めたあとも少し残ります。泡で音はこもります。',
+      note: 'ビール：泡の上面が空気の柱の底になる。泡は音を吸うので共鳴が鈍り、音程がぼやける。' }
   };
+  const FOAM_TAU = 4;
   const GAMES = { edge: '通常モード', match: 'お手本モード' };
   const TENSION = 1.5;
   const TAU_UP = 0.15, TAU_DOWN = 0.12;
@@ -281,6 +311,14 @@ body{margin:0}
     const x = Math.min(Math.max(h, 0), v.H) / v.step, i = Math.floor(x), f = x - i;
     const a = v.cum[Math.min(i, v.cum.length - 1)], b = v.cum[Math.min(i + 1, v.cum.length - 1)];
     return a + (b - a) * f;
+  }
+  // 体積から高さへ（泡の上面を求める）。口を越える分は口の断面で積み上げる
+  function heightOfVol(v, V0) {
+    const full = vol(v, v.H);
+    if (V0 >= full) return v.H + (V0 - full) / area(v, v.H);
+    let lo = 0, hi = v.H;
+    for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (vol(v, m) < V0) lo = m; else hi = m; }
+    return (lo + hi) / 2;
   }
   function freqOf(v, lv, c) {
     const rt = v.rTop;
@@ -326,15 +364,19 @@ body{margin:0}
   let reveal = 0, result = null, releaseLevel = 0, speedLabel = '';
   let startLevel = 0, target = null, modelQ = 0, playerQ = 0, modelRelease = 0, gapT = 0;
   let gurgle = 1, nextG = 0, needTap = false;
-  const busy = () => ['pouring', 'settling', 'demo', 'model', 'mgap'].includes(state);
+  // 泡（ビール）。液面の上に乗る体積として持ち、上面を空気の柱の底とみなす
+  let foamV = 0;
+  const surf = () => foamV > 0 ? heightOfVol(V(), vol(V(), level) + foamV) : level;
+  const tailSurf = (q, h) => tailEstimate(q, h) * (1 + (L().foam || 0));
+  const busy =() => ['pouring', 'settling', 'demo', 'model', 'mgap'].includes(state);
 
   const speedName = (q, base) => { const r = q / base; return r < 0.93 ? 'ゆっくり' : r < 1.1 ? 'ふつう' : '速め'; };
   const tailEstimate = (q, h) => TAU_DOWN * q / area(V(), h);
 
   function newRound() {
     const v = V();
-    flow = 0; holding = false; reveal = 0; result = null; needTap = false;
-    startLevel = rand(v.start[0], v.start[1]) * v.H;
+    flow = 0; holding = false; reveal = 0; result = null; needTap = false; foamV = 0;
+    startLevel =rand(v.start[0], v.start[1]) * v.H;
     level = startLevel;
     if (game === 'edge') {
       Qr = v.Q * rand(0.8, 1.25);
@@ -344,7 +386,7 @@ body{margin:0}
       modelQ = v.Q * rand(0.8, 1.25);
       do { playerQ = v.Q * rand(0.8, 1.25); } while (Math.abs(playerQ - modelQ) / v.Q < 0.12);
       const tgt = rand(v.target[0], v.target[1]) * v.H;
-      modelRelease = Math.max(startLevel + 5, tgt - tailEstimate(modelQ, tgt));
+      modelRelease = Math.max(startLevel + 5, tgt - tailSurf(modelQ, tgt));
       target = null;
       state = 'mready';
     }
@@ -452,28 +494,63 @@ body{margin:0}
     s.start(t); s.stop(t + 1.2);
   }
 
+  // 炭酸のはじける音：ごく短いノイズの粒
+  function pop(gain) {
+    const t = ac.currentTime + Math.random() * 0.02;
+    const s = ac.createBufferSource(); s.buffer = A.buf;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = rand(2500, 7000); f.Q.value = 1.2;
+    const g = ac.createGain(), d = rand(0.004, 0.014);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.001); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    s.connect(f).connect(g).connect(A.comp);
+    s.start(t, Math.random() * 1.5); s.stop(t + d + 0.01);
+  }
+  // ポットの中の氷が当たる音
+  function clink() {
+    const t = ac.currentTime, base = rand(2400, 4200);
+    [1, 2.76].forEach((m, i) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = base * m;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(i ? 0.02 : 0.06, t + 0.003); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      o.connect(g).connect(A.comp); o.start(t); o.stop(t + 0.2);
+    });
+  }
+
+  let fizzAmt = 0, lastA = 0;
   function updateAudio(now) {
     if (!A) return;
-    const v = V(), hot = liquidId === 'hot';
+    const v = V(), l = L();
     const t = ac.currentTime;
-    const f = Math.min(freqOf(v, Math.min(level, v.H), L().c), 12000);
+    const dt = Math.min((now - lastA) / 1000, 0.05); lastA = now;
+    const top = surf();
+    const f = Math.min(freqOf(v, Math.min(top, v.H), l.c), 12000);
     const jit = 1 + (Math.random() - 0.5) * 0.02;
-    A.bp1.Q.value = v.qRes;
-    A.bp3.Q.value = v.qRes * 0.7;
+    const qm = l.qMul || 1;
+    A.bp1.Q.value = v.qRes * qm;
+    A.bp3.Q.value = v.qRes * 0.7 * qm;
     A.bp1.frequency.setTargetAtTime(f * jit, t, 0.015);
     A.bp3.frequency.setTargetAtTime(Math.min(f * 3 * jit, 16000), t, 0.015);
     if (now > nextG) {
-      if (hot) { gurgle = 0.65 + Math.random() * 0.5; nextG = now + rand(12, 30); }
+      if (l.fine) { gurgle = 0.65 + Math.random() * 0.5; nextG = now + rand(12, 30); }
       else { gurgle = 0.35 + Math.random() * Math.random() * 1.3 * v.gurgle; nextG = now + rand(25, 70) * (v.gurgle > 1.2 ? 1.5 : 1); }
     }
-    const k = Math.sqrt(650 / f);
-    const helmPhase = v.kind === 'helm' && level < v.neckStart;
+    const k = Math.sqrt(650 / f) * Math.sqrt(qm);
+    const helmPhase = v.kind === 'helm' && top < v.neckStart;
     A.g1.gain.setTargetAtTime(14 * k * gurgle, t, 0.01);
     A.g3.gain.setTargetAtTime(3.2 * k * gurgle * (helmPhase ? 0.3 : v.h3), t, 0.01);
-    A.gh.gain.setTargetAtTime(hot ? 0.075 : 0.03, t, 0.05);
-    const empty = 1 - Math.min(level / v.H, 1);
-    A.gl.gain.setTargetAtTime((hot ? 0.3 : 0.6) * empty * empty * gurgle, t, 0.02);
+    A.gh.gain.setTargetAtTime(l.hiss, t, 0.05);
+    const empty = 1 - Math.min(top / v.H, 1);
+    A.gl.gain.setTargetAtTime(l.rumble * empty * empty * gurgle, t, 0.02);
     A.master.gain.setTargetAtTime(0.8 * flow, t, 0.03);
+
+    if (!audioOn() || screen !== 'game') return;
+    // 炭酸：注ぐほどはじける量が増え、止めたあともしばらく続く
+    const inGlass = !['title', 'mgap', 'mready'].includes(state);
+    if (l.fizz && inGlass) {
+      fizzAmt = Math.min(1, fizzAmt + flow * dt * 0.9) * Math.exp(-dt / 7);
+      let n = l.fizz * fizzAmt * 70 * dt;
+      while (n > 0) { if (Math.random() < Math.min(n, 1)) pop(0.05 + Math.random() * 0.1); n -= 1; }
+    } else fizzAmt = 0;
+    if (l.clink && flow > 0.3 && Math.random() < 1.3 * flow * dt) clink();
   }
 
   // ---------- 操作 ----------
@@ -485,25 +562,25 @@ body{margin:0}
     if (!audioOn() && kind === 'touch') { needTap = true; renderStatus(); return; }
     needTap = false;
     if (state === 'mready') { playModel(); return; }
-    if (state === 'mwait') { level = startLevel; Qr = playerQ; speedLabel = speedName(playerQ, V().Q); }
+    if (state === 'mwait') { level = startLevel; foamV = 0; Qr = playerQ; speedLabel = speedName(playerQ, V().Q); }
     state = 'pouring'; holding = true;
     renderAll();
   }
   function release() {
     if (state !== 'pouring') return;
-    holding = false; releaseLevel = level; state = 'settling';
+    holding = false; releaseLevel = surf(); state = 'settling';
     renderAll();
   }
   function playModel() {
     initAudio();
-    level = startLevel; Qr = modelQ; flow = 0; holding = true; state = 'model';
+    level = startLevel; foamV = 0; Qr = modelQ; flow = 0; holding = true; state = 'model';
     renderAll();
   }
   function startPractice() {
     initAudio();
     const v = V();
-    level = v.start[0] * v.H; Qr = v.Q; flow = 0; holding = true; result = null; state = 'demo';
-    modelRelease = v.H - tailEstimate(Qr, v.H) - 2;
+    level = v.start[0] * v.H; foamV = 0; Qr = v.Q; flow = 0; holding = true; result = null; state = 'demo';
+    modelRelease = v.H - tailSurf(Qr, v.H) - 2;
     renderAll();
   }
   function skipPractice() {
@@ -524,10 +601,11 @@ body{margin:0}
 
   function finish(over) {
     const v = V();
-    const f = freqOf(v, Math.min(level, v.H), L().c);
+    const top = surf();
+    const f = freqOf(v, Math.min(top, v.H), L().c);
     let r;
     if (game === 'edge') {
-      const gap = v.H - level;
+      const gap = v.H - top;
       if (over) r = { kind: 'over', label: '溢れた', score: 0 };
       else if (gap <= 0) r = { kind: 'top', label: '表面張力', score: 100 };
       else {
@@ -537,7 +615,7 @@ body{margin:0}
       r.gap = gap;
       r.newBest = recordScore({ g: 'edge', d: +gap.toFixed(1), s: r.score, o: over });
     } else {
-      const diff = level - target;
+      const diff = top - target;
       const ad = Math.abs(diff);
       if (over) r = { kind: 'over', label: '溢れた', score: 0 };
       else {
@@ -552,7 +630,7 @@ body{margin:0}
     if (over) splash();
     r.f = f;
     r.overWhileHolding = over && state === 'pouring';
-    r.tail = over ? 0 : level - releaseLevel;
+    r.tail = over ? 0 : top - releaseLevel;
     result = r; holding = false; state = 'result'; reveal = 0;
     renderAll();
   }
@@ -668,7 +746,7 @@ body{margin:0}
         if (r.kind === 'over') c1 = `<span class="k">お手本との差</span><span class="v">溢れ</span>`;
         else c1 = `<span class="k">お手本との差</span><span class="v">${signed(r.diff)}<small>mm</small></span>`;
         c3 = `<span class="k">音程の差</span><span class="v">${r.kind === 'over' ? '—' : signed(r.semis)}<small>半音</small></span>`;
-        const pctT = Math.round(target / v.H * 100), pctY = Math.round(Math.min(level, v.H) / v.H * 100);
+        const pctT = Math.round(target / v.H * 100), pctY = Math.round(Math.min(surf(), v.H) / v.H * 100);
         note = r.kind === 'over'
           ? `お手本は${pctT}%でした。注ぐ速さはお手本より${playerQ > modelQ ? '速め' : 'ゆっくり'}。`
           : `お手本 ${pctT}%（${fmtHz(r.fTarget)}Hz）に対して ${pctY}%（${fmtHz(r.f)}Hz）。${Math.abs(r.diff) <= 1.5 ? '' : r.diff > 0 ? '入れすぎ。' : '少なめ。'}注ぐ速さはお手本より${playerQ > modelQ ? '速め' : 'ゆっくり'}でした。`;
@@ -695,7 +773,9 @@ body{margin:0}
     const tips = {
       glass: '素直に音が上がっていく入門の器。',
       bottle: '胴のあいだは低くゆっくり。首に届いた瞬間に跳ね上がるので、その手前が勝負。',
-      mug: '音程がぼやけるので、音色の変化に耳をすませて。'
+      mug: '音程がぼやけるので、音色の変化に耳をすませて。',
+      wine: '胴の膨らみでいったん音の上がり方がゆるみ、すぼまった口の手前でまた速くなる。',
+      tokkuri: '胴は低くゆっくり、肩で一気に駆け上がる。首はすぐ満ちるので、肩で離す準備を。'
     };
     let items;
     if (game === 'edge') {
@@ -707,6 +787,7 @@ body{margin:0}
       else if (state === 'mwait') items = [['1', 'お手本と同じ量を目隠しで注いでください。'], ['2', '注ぐ速さはお手本と違います。秒数ではなく音を合わせて。'], ['3', '「お手本をもう一度」で聴き直せます。']];
       else items = [['1', 'お手本が決まった量を注ぐ音を聴きます。'], ['2', 'そのあと、同じ量を目隠しで注ぎます。多すぎても少なすぎても減点。'], ['3', tips[vesselId]]];
     }
+    if (L().tip && items.length > 1 && !['model', 'mgap'].includes(state)) items.push(['♪', L().tip]);
     info.innerHTML = `<ul class="rules">${items.map(([b, t]) => `<li><b>${b}</b><span>${t}</span></li>`).join('')}</ul>`;
   }
   // ---------- ベスト更新の共有 ----------
@@ -804,7 +885,7 @@ body{margin:0}
     ctx.restore();
 
     // お湯なら注ぎ口と蓋から湯気
-    if (liquidId === 'hot') {
+    if (L().steam) {
       ctx.save();
       ctx.strokeStyle = col.porcelain; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
       const t = reduced ? 0 : now / 1000;
@@ -830,8 +911,11 @@ body{margin:0}
     if (!w || !h) return;
     ctx.clearRect(0, 0, w, h);
     const extra = v.handle ? 26 : 0;
-    const ppm = Math.min(h * 0.5 / v.H, (w * 0.56) / (2 * v.rMax + 2 * extra + 10));
-    const botY = h * 0.84;
+    const stem = v.stem || 0;
+    const ppm = Math.min(h * (stem ? 0.62 : 0.5) / (v.H + stem), (w * 0.56) / (2 * v.rMax + 2 * extra + 10));
+    const baseY = h * 0.84;
+    const botY = baseY - stem * ppm;
+    const liq = L(), lcol = liq.color;
     const topY = botY - v.H * ppm;
     const cx = w / 2 + 20 - (v.handle ? extra * ppm * 0.5 : 0);
     const Y = hh => botY - hh * ppm;
@@ -839,7 +923,9 @@ body{margin:0}
 
     // 見えるのは練習（demo）と結果だけ
     const water = state === 'demo' ? 1 : state === 'result' ? ease(reveal) : 0;
-    const lv = Math.min(level, v.H + TENSION);
+    // lv: 見かけの上面（ビールなら泡の上）  liqLv: 液そのものの面
+    const lv = Math.min(surf(), v.H + TENSION);
+    const liqLv = Math.min(level, lv);
     const ly = Y(Math.min(lv, v.H));
     const hidden = water < 0.001 && state !== 'result';
     const glassA = hidden ? 0.22 : 0.55;
@@ -855,29 +941,50 @@ body{margin:0}
     if (hidden && flow > 0.01) {
       const rr = Math.min(h * 0.45, v.H * ppm * 0.7) * (0.6 + 0.3 * gurgle * flow);
       const g = ctx.createRadialGradient(cx, (topY + botY) / 2, 0, cx, (topY + botY) / 2, rr);
-      g.addColorStop(0, col.water); g.addColorStop(1, 'transparent');
+      g.addColorStop(0, lcol); g.addColorStop(1, 'transparent');
       ctx.save(); ctx.globalAlpha = 0.16 * flow; ctx.fillStyle = g; ctx.fillRect(0, 0, w, h); ctx.restore();
     }
 
     // 水
     if (water > 0.001 && lv > 0) {
       const inset = 2.5;
-      const lvC = Math.min(lv, v.H);
-      const pts = v.prof.filter(p => p[0] > 0 && p[0] < lvC).map(p => p[0]);
+      // h0〜h1 の帯を器の形に沿って塗る。dome は縁から盛り上がった分
+      const band = (h0, h1, dome) => {
+        const pts = v.prof.filter(p => p[0] > h0 && p[0] < h1).map(p => p[0]);
+        ctx.beginPath();
+        ctx.moveTo(X(h0, -1, inset), Y(h0));
+        ctx.lineTo(X(h0, 1, inset), Y(h0));
+        pts.forEach(p => ctx.lineTo(X(p, 1, inset), Y(p)));
+        ctx.lineTo(X(h1, 1, inset), Y(h1));
+        if (dome > 0) ctx.quadraticCurveTo(cx, topY - dome * ppm * 2.2, X(h1, -1, inset), Y(h1));
+        else ctx.lineTo(X(h1, -1, inset), Y(h1));
+        pts.slice().reverse().forEach(p => ctx.lineTo(X(p, -1, inset), Y(p)));
+        ctx.closePath(); ctx.fill();
+      };
+      const lvC = Math.min(lv, v.H), liqC = Math.min(liqLv, v.H);
+      const hasFoam = lv - liqLv > 0.3;
       ctx.save();
       ctx.globalAlpha = water * 0.8;
-      const grad = ctx.createLinearGradient(0, ly, 0, botY);
-      grad.addColorStop(0, col.water); grad.addColorStop(1, 'rgba(60,110,140,0.9)');
+      const grad = ctx.createLinearGradient(0, Y(liqC), 0, botY);
+      grad.addColorStop(0, lcol); grad.addColorStop(1, liq.foam ? 'rgba(150,90,20,0.9)' : 'rgba(60,110,140,0.9)');
       ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(X(0, -1, inset), botY);
-      ctx.lineTo(X(0, 1, inset), botY);
-      pts.forEach(p => ctx.lineTo(X(p, 1, inset), Y(p)));
-      ctx.lineTo(X(lvC, 1, inset), Y(lvC));
-      if (lv > v.H) ctx.quadraticCurveTo(cx, topY - (lv - v.H) * ppm * 2.2, X(lvC, -1, inset), Y(lvC));
-      else ctx.lineTo(X(lvC, -1, inset), Y(lvC));
-      pts.slice().reverse().forEach(p => ctx.lineTo(X(p, -1, inset), Y(p)));
-      ctx.closePath(); ctx.fill();
+      band(0, liqC, hasFoam ? 0 : lv - v.H);
+      // 炭酸・ビールの立ちのぼる泡
+      if (liq.fizz && liqC > 4) {
+        ctx.fillStyle = col.porcelain; ctx.globalAlpha = water * 0.35;
+        const t = reduced ? 0 : now / 1000;
+        for (let i = 0; i < 14; i++) {
+          const ph = (t * (0.25 + (i % 5) * 0.06) + i * 0.137) % 1;
+          const hh = liqC * ph;
+          const rx = ((i * 0.618) % 1) * 1.6 - 0.8;
+          ctx.beginPath(); ctx.arc(cx + rx * (radius(v, hh) * ppm - 6), Y(hh), 1.1 + (i % 3) * 0.4, 0, Math.PI * 2); ctx.fill();
+        }
+      }
+      if (hasFoam) {
+        ctx.globalAlpha = water * 0.92;
+        ctx.fillStyle = liq.foamColor;
+        band(liqC, lvC, lv - v.H);
+      }
       if (lv <= v.H) {
         ctx.globalAlpha = water; ctx.strokeStyle = col.porcelain; ctx.lineWidth = 1;
         ctx.beginPath(); ctx.moveTo(X(lvC, -1, inset), ly); ctx.lineTo(X(lvC, 1, inset), ly); ctx.stroke();
@@ -888,7 +995,8 @@ body{margin:0}
     // 溢れ
     if (state === 'result' && result && result.kind === 'over') {
       const a = ease(reveal);
-      ctx.save(); ctx.globalAlpha = 0.75 * a; ctx.fillStyle = col.water; ctx.strokeStyle = col.water; ctx.lineWidth = 3; ctx.lineCap = 'round';
+      const spillCol = liq.foamColor || lcol;
+      ctx.save(); ctx.globalAlpha = 0.75 * a; ctx.fillStyle = spillCol; ctx.strokeStyle = spillCol; ctx.lineWidth = 3; ctx.lineCap = 'round';
       [-1, 1].forEach(s => {
         ctx.beginPath();
         ctx.moveTo(X(v.H, s) + s * 2, topY);
@@ -896,7 +1004,7 @@ body{margin:0}
         for (let i = 1; i <= steps * a; i++) { const hh = v.H * (1 - i / steps); ctx.lineTo(X(hh, s) + s * 3, Y(hh)); }
         ctx.stroke();
       });
-      ctx.beginPath(); ctx.ellipse(cx, botY + 12, (v.rMax * ppm + 30) * a + 1, 6 * a + 1, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(cx, baseY + 12, (v.rMax * ppm + 30) * a + 1, 6 * a + 1, 0, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
     }
 
@@ -906,11 +1014,21 @@ body{margin:0}
     ctx.strokeStyle = col.glass; ctx.lineWidth = 2; ctx.lineJoin = 'round';
     ctx.beginPath();
     for (let i = v.prof.length - 1; i >= 0; i--) { const [hh] = v.prof[i]; const x = X(hh, -1) - 1; i === v.prof.length - 1 ? ctx.moveTo(x, Y(hh)) : ctx.lineTo(x, Y(hh)); }
-    ctx.lineTo(X(0, -1) - 1, botY + 9);
-    ctx.lineTo(X(0, 1) + 1, botY + 9);
+    const baseT = stem ? 4 : 9;
+    ctx.lineTo(X(0, -1) - 1, botY + baseT);
+    ctx.lineTo(X(0, 1) + 1, botY + baseT);
     v.prof.forEach(([hh]) => ctx.lineTo(X(hh, 1) + 1, Y(hh)));
     ctx.stroke();
     ctx.beginPath(); ctx.moveTo(X(0, -1), botY); ctx.lineTo(X(0, 1), botY); ctx.stroke();
+    if (stem) {
+      // 脚と台座
+      const footR = v.rMax * 0.8 * ppm;
+      ctx.beginPath();
+      ctx.moveTo(cx - 2, botY + baseT); ctx.lineTo(cx - 2, baseY - 3);
+      ctx.moveTo(cx + 2, botY + baseT); ctx.lineTo(cx + 2, baseY - 3);
+      ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(cx, baseY, footR, 4, 0, 0, Math.PI * 2); ctx.stroke();
+    }
     if (v.handle) {
       ctx.lineWidth = 3;
       const x0 = X(v.H * 0.78, 1) + 1, x1 = X(v.H * 0.22, 1) + 1, xo = cx + (v.rTop + extra) * ppm;
@@ -918,12 +1036,12 @@ body{margin:0}
       ctx.bezierCurveTo(xo, Y(v.H * 0.86), xo, Y(v.H * 0.12), x1, Y(v.H * 0.22)); ctx.stroke();
     }
     ctx.globalAlpha = glassA * 0.35; ctx.lineWidth = 3;
-    const hl = v.kind === 'helm' ? [v.prof[1][0] * 0.85, v.prof[1][0] * 0.15] : [v.H * 0.88, v.H * 0.2];
+    const hl = v.hl || (v.kind === 'helm' ? [v.prof[1][0] * 0.85, v.prof[1][0] * 0.15] : [v.H * 0.88, v.H * 0.2]);
     ctx.beginPath(); ctx.moveTo(X(hl[0], -1) + 9, Y(hl[0])); ctx.lineTo(X(hl[1], -1) + 9, Y(hl[1])); ctx.stroke();
     ctx.restore();
 
     // 器から立つ湯気（水位の手がかりにならないよう、口の上に出すだけ）
-    if (liquidId === 'hot' && level > 3 && v.kind !== 'helm') {
+    if (liq.steam && level > 3 && v.kind !== 'helm') {
       ctx.save();
       ctx.strokeStyle = col.porcelain; ctx.lineWidth = 2; ctx.lineCap = 'round';
       for (let i = 0; i < 2; i++) {
@@ -948,7 +1066,7 @@ body{margin:0}
       const sw = 1.2 + flow * 5.5 * Math.sqrt(v.Q / 64000);
       const wob = reduced ? 0 : Math.sin(now / 85) * 1.1 * flow;
       ctx.save();
-      ctx.strokeStyle = col.water; ctx.lineCap = 'round'; ctx.lineWidth = sw;
+      ctx.strokeStyle = lcol; ctx.lineCap = 'round'; ctx.lineWidth = sw;
       ctx.globalAlpha = 0.85 * flowA;
       ctx.beginPath();
       ctx.moveTo(sx + 1, tipY);
@@ -968,10 +1086,10 @@ body{margin:0}
     if (state === 'demo') {
       ctx.save();
       ctx.fillStyle = col.mist; ctx.font = MONO; ctx.textBaseline = 'top'; ctx.textAlign = 'right';
-      const f = freqOf(v, Math.min(level, v.H), L().c);
-      const phase = v.kind === 'helm' ? (level < v.neckStart ? '胴：ヘルムホルツ' : '首：筒の共鳴') : '筒の共鳴';
+      const f = freqOf(v, Math.min(lv, v.H), liq.c);
+      const phase = v.kind === 'helm' ? (lv < v.neckStart ? '胴：ヘルムホルツ' : '首：筒の共鳴') : '筒の共鳴';
       ctx.fillText(`共鳴 ${fmtHz(f)} Hz`, w - 14, 34);
-      ctx.fillText(`水位 ${Math.round(Math.min(level, v.H) / v.H * 100)}%`, w - 14, 52);
+      ctx.fillText(`${liq.foam ? '泡の上' : '水位'} ${Math.round(Math.min(lv, v.H) / v.H * 100)}%`, w - 14, 52);
       ctx.fillText(phase, w - 14, 70);
       ctx.restore();
     }
@@ -1030,20 +1148,23 @@ body{margin:0}
 
     if (['pouring', 'settling', 'demo', 'model'].includes(state)) {
       level += flow * Qr / area(v, Math.min(level, v.H)) * dt;
+      const fr = L().foam || 0;
+      if (fr) foamV += (fr * flow * Qr - foamV / FOAM_TAU) * dt;
+      const top = surf();
       if (state === 'demo' || state === 'model') {
-        if (holding && level >= modelRelease) holding = false;
+        if (holding && top >= modelRelease) holding = false;
         if (!holding && flow < 0.004) {
           if (state === 'demo') newRound();
-          else { target = level; state = 'mgap'; gapT = 0.8; renderAll(); }
+          else { target = top; state = 'mgap'; gapT = 0.8; renderAll(); }
         }
-      } else if (level > v.H + TENSION) {
-        level = v.H + TENSION; finish(true);
+      } else if (top > v.H + TENSION) {
+        finish(true);
       } else if (state === 'settling' && flow < 0.004) {
         finish(false);
       }
     } else if (state === 'mgap') {
       gapT -= dt;
-      if (gapT <= 0) { level = startLevel; state = 'mwait'; renderAll(); }
+      if (gapT <= 0) { level = startLevel; foamV = 0; state = 'mwait'; renderAll(); }
     }
     if (state === 'result') reveal = Math.min(1, reveal + dt / 0.8);
 
