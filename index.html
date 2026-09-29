@@ -681,12 +681,12 @@ body{margin:0}
             <div><span class="k">得点</span><span class="v">${r.score}</span></div>
             <div>${c3}</div>
           </div>
-          ${r.newBest ? `<div class="share">
+          ${canShare(r) ? `<div class="share">
             <a id="xShare" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.9 2H22l-7.2 8.2L23 22h-6.6l-5.1-6.7L5.4 22H2.3l7.7-8.8L2 2h6.8l4.6 6.1L18.9 2zm-1.2 18h1.7L7.4 3.9H5.6L17.7 20z"/></svg>Xに投稿</a>
             <button type="button" id="copyShare" aria-live="polite">文面をコピー</button>
           </div>` : ''}
         </div>`;
-      if (r.newBest) {
+      if (canShare(r)) {
         shareText = buildShareText(r);
         $('#xShare').href = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(shareText);
       }
@@ -712,12 +712,17 @@ body{margin:0}
   // ---------- ベスト更新の共有 ----------
   const SHARE_URL = 'https://kanameshiga-dev.github.io/sosogu/';
   let shareText = '';
+  // 表面張力（縁より上で止めた）はベスト更新でなくても毎回共有できる
+  const isSurface = r => game === 'edge' && r.kind !== 'over' && r.gap <= 0;
+  const canShare = r => r.newBest || isSurface(r);
   function buildShareText(r) {
     const combo = `${V().name}・${L().name}`;
     const detail = game === 'edge'
       ? (r.gap <= 0 ? `縁より上 +${fmt1(-r.gap)}mm` : `縁まで残り ${fmt1(r.gap)}mm`)
       : `お手本との差 ${signed(r.diff)}mm`;
-    return `【注ぐ／${GAMES[game]}】${combo}でベスト更新！ ${r.score}点\n「${r.label}」${detail}\n\n目ではなく耳で、器を満たす。\n${SHARE_URL}\n\n#注ぐ`;
+    const head = r.newBest ? `${combo}でベスト更新！ ${r.score}点` : `${combo}で表面張力！ ${r.score}点`;
+    const line2 = r.newBest ? `「${r.label}」${detail}` : detail;
+    return `【注ぐ／${GAMES[game]}】${head}\n${line2}\n\n目ではなく耳で、器を満たす。\n${SHARE_URL}\n\n#注ぐ`;
   }
   info.addEventListener('click', async e => {
     const b = e.target.closest('#copyShare');
