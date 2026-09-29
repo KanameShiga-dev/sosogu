@@ -278,9 +278,11 @@ body{margin:0}
       tip: '冷えた空気は音が遅く、いつもより約0.5半音低く鳴ります。ポットの氷の音に惑わされないで。',
       note: '氷水：器の中の空気が冷えて音速が下がり（約333m/s）、同じ水位でも約0.5半音低く鳴る。' },
     soda: { name: '炭酸水', c: 343000, color: '#a9dcef', hiss: 0.05, rumble: 0.45, fine: true, fizz: 1,
+      bottle: { glass: 'rgba(70,140,110,0.55)', label: '#dfe6eb' },
       tip: 'シュワシュワとはじける音の奥にある音程を聴き分けてください。',
       note: '炭酸水：はじける泡の雑音が共鳴の音程に重なる。音程そのものは水と同じ。' },
     beer: { name: 'ビール', c: 343000, color: '#e0a83c', foamColor: '#f3ead7', hiss: 0.035, rumble: 0.5, fizz: 0.35, foam: 0.3, qMul: 0.6,
+      bottle: { glass: 'rgba(110,62,24,0.85)', label: '#e0a83c' },
       tip: '泡の上面までが水位です。泡は注ぐほど立ち、止めたあとも少し残ります。泡で音はこもります。',
       note: 'ビール：泡の上面が空気の柱の底になる。泡は音を吸うので共鳴が鈍り、音程がぼやける。' }
   };
@@ -498,7 +500,7 @@ body{margin:0}
   function pop(gain) {
     const t = ac.currentTime + Math.random() * 0.02;
     const s = ac.createBufferSource(); s.buffer = A.buf;
-    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = rand(2500, 7000); f.Q.value = 1.2;
+    const f = ac.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = rand(2000, 5000); f.Q.value = 1.2;
     const g = ac.createGain(), d = rand(0.004, 0.014);
     g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + 0.001); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
     s.connect(f).connect(g).connect(A.comp);
@@ -547,8 +549,8 @@ body{margin:0}
     const inGlass = !['title', 'mgap', 'mready'].includes(state);
     if (l.fizz && inGlass) {
       fizzAmt = Math.min(1, fizzAmt + flow * dt * 0.9) * Math.exp(-dt / 7);
-      let n = l.fizz * fizzAmt * 70 * dt;
-      while (n > 0) { if (Math.random() < Math.min(n, 1)) pop(0.05 + Math.random() * 0.1); n -= 1; }
+      let n = l.fizz * fizzAmt * 28 * dt;
+      while (n > 0) { if (Math.random() < Math.min(n, 1)) pop(0.012 + Math.random() * 0.023); n -= 1; }
     } else fizzAmt = 0;
     if (l.clink && flow > 0.3 && Math.random() < 1.3 * flow * dt) clink();
   }
@@ -711,6 +713,7 @@ body{margin:0}
     }
     statusEl.textContent = msg;
     $('#tag').textContent = `${V().name} ・ ${L().name}`;
+    cv.setAttribute('aria-label', `${L().bottle ? '瓶' : 'ポット'}と${V().name}`);
   }
   function renderBtn() {
     btn.dataset.state = state;
@@ -904,6 +907,33 @@ body{margin:0}
     }
   }
 
+  // 瓶（炭酸水・ビール）：口を原点に、胴を左へ伸ばして描き、口を軸に傾ける
+  function drawBottle(tipX, tipY, s, tilt, alpha, b) {
+    ctx.save();
+    ctx.translate(tipX, tipY);
+    ctx.rotate(tilt);
+    ctx.scale(s, s);
+    ctx.globalAlpha = alpha;
+    ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.strokeStyle = col.porcelain; ctx.fillStyle = b.glass; ctx.lineWidth = 1.6 / s;
+    ctx.beginPath();
+    ctx.moveTo(0, -6.5); ctx.lineTo(-7, -6.5); ctx.lineTo(-7, -5.5); ctx.lineTo(-42, -5.5);
+    ctx.bezierCurveTo(-52, -5.5, -56, -17, -66, -17);
+    ctx.lineTo(-146, -17); ctx.quadraticCurveTo(-150, -17, -150, -13);
+    ctx.lineTo(-150, 13); ctx.quadraticCurveTo(-150, 17, -146, 17);
+    ctx.lineTo(-66, 17);
+    ctx.bezierCurveTo(-56, 17, -52, 5.5, -42, 5.5);
+    ctx.lineTo(-7, 5.5); ctx.lineTo(-7, 6.5); ctx.lineTo(0, 6.5);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    // ラベル
+    ctx.globalAlpha = alpha * 0.8; ctx.fillStyle = b.label;
+    ctx.fillRect(-128, -16, 46, 32);
+    // 光沢
+    ctx.globalAlpha = alpha * 0.3; ctx.strokeStyle = col.porcelain; ctx.lineWidth = 2.5 / s;
+    ctx.beginPath(); ctx.moveTo(-70, -11); ctx.lineTo(-80, -11); ctx.moveTo(-132, -11); ctx.lineTo(-142, -11); ctx.stroke();
+    ctx.restore();
+  }
+
   function draw(now, dt) {
     if (screen !== 'game') return;
     const v = V();
@@ -934,7 +964,8 @@ body{margin:0}
     const sx = v.kind === 'helm' ? cx : cx - v.rTop * ppm * 0.35;
     const potS = Math.max(0.62, Math.min(1, h / 430));
     const tipY = Math.max(topY - 42, 60 * potS);
-    const wantTilt = -0.12 + 0.62 * Math.min(1, flow * 1.15);
+    // 瓶は口を上に向けて待ち、注ぐときは口を下げる。ポットより大きく傾く
+    const wantTilt = liq.bottle ? -0.35 + 0.85 * Math.min(1, flow * 1.15) : -0.12 + 0.62 * Math.min(1, flow * 1.15);
     potTilt += (wantTilt - potTilt) * (1 - Math.exp(-(dt || 0.016) / 0.08));
 
     // 見えないときは音に合わせて揺れる光だけ
@@ -1080,7 +1111,8 @@ body{margin:0}
     }
 
     // ポット
-    drawPot(sx, tipY, potS, potTilt, 0.95, now);
+    if (liq.bottle) drawBottle(sx, tipY, potS, potTilt, 0.95, liq.bottle);
+    else drawPot(sx, tipY, potS, potTilt, 0.95, now);
 
     // 練習中の共鳴表示
     if (state === 'demo') {
